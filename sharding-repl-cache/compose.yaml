@@ -14,6 +14,7 @@ services:
     environment:
       MONGODB_URL: "mongodb://mongos_router"
       MONGODB_DATABASE_NAME: "somedb"
+      REDIS_URL: "redis://redis-master:6379"
     depends_on:
       mongos_router:
         condition: service_started
@@ -51,6 +52,26 @@ services:
         "--bind_ip_all",
         "--port",
         "27020"
+      ]
+
+  #  роутер
+  mongos_router:
+    image: mongo:latest
+    container_name: mongos_router
+    restart: always
+    ports:
+      - "27017:27017"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.7
+    command:
+      [
+        "mongos", # обычная mongo в режиме роутера
+        "--configdb",
+        "config_server/configSrv:27020", #передача данных сервера конфигурации
+        "--bind_ip_all",
+        "--port",
+        "27017"
       ]
 
   shard1-1:
@@ -180,25 +201,33 @@ services:
         "27033"
       ]
 
-#  роутер
-  mongos_router:
-    image: mongo:latest
-    container_name: mongos_router
+  redis-master:
+    image: redis:latest
+    container_name: redis-master
     restart: always
-    ports:
-      - "27017:27017"
     networks:
       app-network:
-        ipv4_address: 173.17.0.7
-    command:
-      [
-        "mongos", # обычная mongo в режиме роутера
-        "--configdb",
-        "config_server/configSrv:27020", #передача данных сервера конфигурации
-        "--bind_ip_all",
-        "--port",
-        "27017"
-      ]
+        ipv4_address: 173.17.0.17
+    ports:
+      - "6379:6379"
+
+  redis-repl1:
+    image: redis:latest
+    container_name: redis-repl1
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.18
+    command: ["redis-server", "--replicaof", "redis-master", "6379"]
+
+  redis-repl2:
+    image: redis:latest
+    container_name: redis-repl2
+    restart: always
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.19
+    command: ["redis-server", "--replicaof", "redis-master", "6379"]
 
 networks:
   app-network:

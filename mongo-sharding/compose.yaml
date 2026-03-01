@@ -6,9 +6,11 @@ services:
     build:
       context: api_app
       dockerfile: Dockerfile
-
     ports:
       - 8080:8080
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.6
     environment:
       MONGODB_URL: "mongodb://mongos_router"
       MONGODB_DATABASE_NAME: "somedb"
