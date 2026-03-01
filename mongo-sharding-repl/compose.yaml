@@ -1,0 +1,218 @@
+name: mongo-sharding-repl
+
+services:
+  pymongo_api:
+    container_name: pymongo_api
+    build:
+      context: api_app
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.6
+    environment:
+      MONGODB_URL: "mongodb://mongos_router"
+      MONGODB_DATABASE_NAME: "somedb"
+    depends_on:
+      mongos_router:
+        condition: service_started
+      configSrv:
+        condition: service_started
+      shard1-1:
+        condition: service_started
+      shard1-2:
+        condition: service_started
+      shard1-3:
+        condition: service_started
+      shard2-1:
+        condition: service_started
+      shard2-2:
+        condition: service_started
+      shard2-3:
+        condition: service_started
+
+  configSrv:
+    image: mongo:latest # docker образ
+    container_name: configSrv
+    restart: always
+    ports:
+      - "27020:27020"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.10
+    volumes:
+      - config-data:/data/db
+    command:
+      [
+        "--configsvr",  # запуск в режиме конфигурации
+        "--replSet",
+        "config_server",
+        "--bind_ip_all",
+        "--port",
+        "27020"
+      ]
+
+  shard1-1:
+    image: mongo:latest
+    container_name: shard1-1
+    restart: always
+    ports:
+      - "27018:27018"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.11
+    volumes:
+      - shard1-1-data:/data/db
+    command:
+      [
+        "--shardsvr", # запуск в режиме шардинга
+        "--replSet",
+        "shard1", # название реплики
+        "--bind_ip_all",
+        "--port",
+        "27018"
+      ]
+
+  shard1-2:
+    image: mongo:latest
+    container_name: shard1-2
+    restart: always
+    ports:
+      - "27021:27021"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.12
+    volumes:
+      - shard1-2-data:/data/db
+    command:
+      [
+        "--shardsvr", # запуск в режиме шардинга
+        "--replSet",
+        "shard1", # название реплики
+        "--bind_ip_all",
+        "--port",
+        "27021"
+      ]
+
+  shard1-3:
+    image: mongo:latest
+    container_name: shard1-3
+    restart: always
+    ports:
+      - "27022:27022"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.13
+    volumes:
+      - shard1-3-data:/data/db
+    command:
+      [
+        "--shardsvr", # запуск в режиме шардинга
+        "--replSet",
+        "shard1", # название реплики
+        "--bind_ip_all",
+        "--port",
+        "27022"
+      ]
+
+#  2-й шард
+  shard2-1:
+    image: mongo:latest
+    container_name: shard2-1
+    restart: always
+    ports:
+      - "27031:27031"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.14
+    volumes:
+      - shard2-1-data:/data/db
+    command:
+      [
+        "--shardsvr", #запуск в режиме шардинга
+        "--replSet",
+        "shard2", #название реплик
+        "--bind_ip_all",
+        "--port",
+        "27031"
+      ]
+
+  shard2-2:
+    image: mongo:latest
+    container_name: shard2-2
+    restart: always
+    ports:
+      - "27032:27032"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.15
+    volumes:
+      - shard2-2-data:/data/db
+    command:
+      [
+        "--shardsvr", #запуск в режиме шардинга
+        "--replSet",
+        "shard2", #название реплик
+        "--bind_ip_all",
+        "--port",
+        "27032"
+      ]
+
+  shard2-3:
+    image: mongo:latest
+    container_name: shard2-3
+    restart: always
+    ports:
+      - "27033:27033"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.16
+    volumes:
+      - shard2-3-data:/data/db
+    command:
+      [
+        "--shardsvr", #запуск в режиме шардинга
+        "--replSet",
+        "shard2", #название реплик
+        "--bind_ip_all",
+        "--port",
+        "27033"
+      ]
+
+#  роутер
+  mongos_router:
+    image: mongo:latest
+    container_name: mongos_router
+    restart: always
+    ports:
+      - "27017:27017"
+    networks:
+      app-network:
+        ipv4_address: 173.17.0.7
+    command:
+      [
+        "mongos", # обычная mongo в режиме роутера
+        "--configdb",
+        "config_server/configSrv:27020", #передача данных сервера конфигурации
+        "--bind_ip_all",
+        "--port",
+        "27017"
+      ]
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 173.17.0.0/16
+
+volumes:
+  config-data:
+  shard1-1-data:
+  shard1-2-data:
+  shard1-3-data:
+  shard2-1-data:
+  shard2-2-data:
+  shard2-3-data:
